@@ -85,7 +85,7 @@ SqueezeNet详解
 
 # 三. 代码
 
-> 利用标准SqueezeNet网络结构实现CIFAR 10分类的数据集分类，代码在code，具体如下：
+> 利用标准SqueezeNet网络结构实现CIFAR 10分类的数据集分类，代码在[code][https://github.com/ShaoQiBNU/CV-SqueezeNet/tree/master/code]，具体如下：
 
 ## 1. main
 
