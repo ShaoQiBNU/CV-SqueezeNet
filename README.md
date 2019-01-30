@@ -613,6 +613,6 @@ def load_test_data():
 
 ## 5. 运行
 
-```python
+```shell
 python main.py
 ```
