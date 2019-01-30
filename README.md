@@ -89,6 +89,7 @@ SqueezeNet详解
 
 ## 1. main
 
+> 主函数入口
 ```python
 ################################## load packages ###############################
 import tensorflow as tf
@@ -148,6 +149,7 @@ if __name__ == "__main__":
 
 ## 2. model
 
+> 模型结构
 ```python
 ################################## load packages ###############################
 import tensorflow as tf
@@ -240,6 +242,8 @@ class SqueezeNet(object):
 ```
 
 ## 3. solver
+
+> 训练和预测
 
 ```python
 ################################## load packages ###############################
@@ -367,6 +371,8 @@ class Solver(object):
 ```
 
 ## 4. cifar10
+
+> 数据下载及处理代码
 ```python
 ########################################################################
 #
@@ -603,4 +609,10 @@ def load_test_data():
     return images, cls, one_hot_encoded(class_numbers=cls, num_classes=num_classes)
 
 ########################################################################
+```
+
+## 5. 运行
+
+```python
+python main.py
 ```
