@@ -47,17 +47,17 @@ SqueezeNet详解
 >
 > Fire模块的基本结构如图所示。在squeeze层卷积核数记为 <a href="https://www.codecogs.com/eqnedit.php?latex=s_{1x1}" target="_blank"><img src="https://latex.codecogs.com/svg.latex?s_{1x1}" title="s_{1x1}" /></a>，在expand层，记 1x1 卷积核数为 <a href="https://www.codecogs.com/eqnedit.php?latex=e_{1x1}" target="_blank"><img src="https://latex.codecogs.com/svg.latex?e_{1x1}" title="e_{1x1}" /></a> ，而3x3卷积核数为 <a href="https://www.codecogs.com/eqnedit.php?latex=e_{3x3}" target="_blank"><img src="https://latex.codecogs.com/svg.latex?e_{3x3}" title="e_{3x3}" /></a>。这三个参数为超参数，其中设定：<a href="https://www.codecogs.com/eqnedit.php?latex=s_{1x1}" target="_blank"><img src="https://latex.codecogs.com/svg.latex?s_{1x1}" title="s_{1x1}" /></a>的值小于 <a href="https://www.codecogs.com/eqnedit.php?latex=e_{1x1}" target="_blank"><img src="https://latex.codecogs.com/svg.latex?e_{1x1}" title="e_{1x1}" /></a>与 <a href="https://www.codecogs.com/eqnedit.php?latex=e_{3x3}" target="_blank"><img src="https://latex.codecogs.com/svg.latex?e_{3x3}" title="e_{3x3}" /></a>的和，这样有助于限制 3x3 过滤器的输入通道数量，也就是expand层的输入特征图的通道数。
 
-img1
+![image](https://github.com/ShaoQiBNU/CV-SqueezeNet/blob/master/images/1.png)
 
 ### 2. 整体设计
 
 > SqueezeNet网络结构如图所示：
 
-Img2
+![image](https://github.com/ShaoQiBNU/CV-SqueezeNet/blob/master/images/2.png)
 
 > 左图是标准的SqueezeNet， 从一个独立的卷积层(conv1) 开始，然后是8个Fire模块 (fire2-9)， 最后一个卷积层(conv10)。 从网络的开始到结束，逐渐增加每个Fire模块的过滤器数量 。其中穿插着 stride=2 的 maxpool层，其主要作用是下采样，并且采用延迟的策略，尽量使前面层拥有较大的 feature map。中图和右图使用了 ResNet 网络中的 shortcut 作为提升策略。各层具体参数设计如图所示：
 
-Img3
+![image](https://github.com/ShaoQiBNU/CV-SqueezeNet/blob/master/images/3.png)
 
 > SqueezeNet的详细信息和设计选择如下：
 >
@@ -81,7 +81,7 @@ Img3
 >
 > 分别测试SR与模型准确率以及模型大小的关系、pct3x3与模型准确率以及模型大小的关系。如下图可知，左图给出了压缩比（SR）的影响。压缩比小于0.25时，正确率开始显著下降。右图给出了3x3卷积比例的影响，在比例小于25%时，正确率开始显著下降，此时模型大小约为原先的44%。超过50%后，模型大小显著增加，但是正确率不再上升。
 
-Img4
+![image](https://github.com/ShaoQiBNU/CV-SqueezeNet/blob/master/images/4.png)
 
 # 三. 代码
 
