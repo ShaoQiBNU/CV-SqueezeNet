@@ -85,4 +85,283 @@ SqueezeNet详解
 
 # 三. 代码
 
+> 利用标准SqueezeNet网络结构实现CIFAR 10分类的数据集分类，代码在code，具体如下：
 
+## 1. main
+
+```python
+################################## load packages ###############################
+import tensorflow as tf
+import numpy as np
+import argparse
+import cifar10
+from solver import Solver
+
+
+###################### load data #########################
+def load_data():
+
+    ################ download dataset ####################
+    cifar10.maybe_download_and_extract()
+
+    ################ load train and test data ####################
+    images_train, _, labels_train = cifar10.load_training_data()
+    images_test, _, labels_test = cifar10.load_test_data()
+
+    return images_train, labels_train, images_test, labels_test
+
+
+################################## main ###############################
+if __name__ == "__main__":
+
+    ###################### load train and test data #########################
+    images_train, labels_train, images_test, labels_test = load_data()
+
+    ###################### argument ####################
+    parser = argparse.ArgumentParser()
+
+    ############# parameter ##############
+    parser.add_argument('--epochs', type=int, default=20)
+    parser.add_argument('--batch_size', type=int, default=100)
+    parser.add_argument('--learning_rate', type=int, default=0.0001)
+    parser.add_argument('--display_step', type=int, default=20)
+
+    ############# data #############
+    parser.add_argument('--classes', type=int, default=10)
+    parser.add_argument('--height', type=int, default=32)
+    parser.add_argument('--width', type=int, default=32)
+    parser.add_argument('--channel', type=int, default=3)
+
+
+    ############# conf #############
+    conf = parser.parse_args()
+
+    ###################### solver ####################
+    solver = Solver(conf, images_train, labels_train, images_test, labels_test)
+
+    ############# train #############
+    solver.train()
+
+    ############# test #############
+    solver.test()
+```
+
+## 2. model
+
+```python
+################################## load packages ###############################
+import tensorflow as tf
+from layer import *
+
+
+################################## SqueezeNet ###############################
+class SqueezeNet(object):
+    def __init__(self, x, keep_prob, classes):
+
+        ########## conv1 ##########
+        net = tf.layers.conv2d(x, 96, [7, 7], strides=[2, 2], padding="SAME",
+                               activation=tf.nn.relu, name="conv1")
+
+        ########## maxpool1 ##########
+        net = tf.layers.max_pooling2d(net, [3, 3], strides=[2, 2], name="maxpool1")
+
+        ########## fire2 ##########
+        net = self._fire(net, 16, 64, "fire2")
+
+        ########## fire3 ##########
+        net = self._fire(net, 16, 64, "fire3")
+
+        ########## fire4 ##########
+        net = self._fire(net, 32, 128, "fire4")
+
+        ########## maxpool4 ##########
+        net = tf.layers.max_pooling2d(net, [3, 3], strides=[2, 2], name="maxpool4")
+
+        ########## fire5 ##########
+        net = self._fire(net, 32, 128, "fire5")
+
+        ########## fire6 ##########
+        net = self._fire(net, 48, 192, "fire6")
+
+        ########## fire7 ##########
+        net = self._fire(net, 48, 192, "fire7")
+
+        ########## fire8 ##########
+        net = self._fire(net, 64, 256, "fire8")
+
+        ########## maxpool8 ##########
+        net = tf.layers.max_pooling2d(net, [3, 3], strides=[2, 2], name="maxpool8")
+
+        ########## fire9 ##########
+        net = self._fire(net, 64, 256, "fire9")
+
+        ########## dropout ##########
+        net = tf.layers.dropout(net, keep_prob)
+
+        ########## conv10 ##########
+        net = tf.layers.conv2d(net, classes, [1, 1], strides=[1, 1], padding="SAME",
+                               activation=tf.nn.relu, name="conv10")
+
+        ########## avgpool10 ##########
+        # net = tf.layers.average_pooling2d(net, [13, 13], strides=[1, 1], name="avgpool10")
+        net = tf.layers.average_pooling2d(net, [1, 1], strides=[1, 1], name="avgpool10")
+
+
+        ########## squeeze the axis ##########
+        net = tf.squeeze(net, axis=[1, 2])
+
+        self.logits = net
+        self.pred = tf.nn.softmax(net)
+
+
+    ###################### fire module #########################
+    def _fire(self, inputs, squeeze_depth, expand_depth, scope):
+
+        with tf.variable_scope(scope):
+
+            ########## squeeze ##########
+            squeeze = tf.layers.conv2d(inputs, squeeze_depth, [1, 1],
+                                       strides=[1, 1], padding="SAME",
+                                       activation=tf.nn.relu, name="squeeze")
+
+            ################ expand ################
+            ########## expand 1x1 ##########
+            expand_1x1 = tf.layers.conv2d(squeeze, expand_depth, [1, 1],
+                                          strides=[1, 1], padding="SAME",
+                                          activation=tf.nn.relu, name="expand_1x1")
+
+            ########## expand 3x3 ##########
+            expand_3x3 = tf.layers.conv2d(squeeze, expand_depth, [3, 3],
+                                          strides=[1, 1], padding="SAME",
+                                          activation=tf.nn.relu, name="expand_3x3")
+
+            ########## concat ##########
+            return tf.concat([expand_1x1, expand_3x3], axis=3)
+```
+
+## 3. solver
+
+```python
+################################## load packages ###############################
+import tensorflow as tf
+import numpy as np
+from model import SqueezeNet
+
+
+################################## slover ###############################
+class Solver(object):
+    def __init__(self, conf, X_train, y_train, X_test, y_test):
+        self.X_train = X_train
+        self.y_train = y_train
+        self.X_test = X_test
+        self.y_test = y_test
+        self.conf = conf
+
+        ########## parameter ##########
+        self.epochs = conf.epochs
+        self.batch_size = conf.batch_size
+        self.learning_rate = conf.learning_rate
+        self.display_step = conf.display_step
+
+        ########## data ##########
+        self.classes = conf.classes
+        self.height = conf.height
+        self.width = conf.width
+        self.channel = conf.channel
+
+        ########## placeholder ##########
+        self.x = tf.placeholder(tf.float32, [None, self.height, self.width, self.channel])
+        self.y = tf.placeholder(tf.float32, [None, self.classes])
+        self.keep_prob = tf.placeholder(tf.float32)
+
+        #### model pred 影像判断结果 ####
+        self.pred = SqueezeNet(self.x, self.keep_prob, self.classes).pred
+
+        #### loss 损失计算 ####
+        self.cost = tf.reduce_mean(tf.nn.softmax_cross_entropy_with_logits(logits=self.pred, labels=self.y))
+
+        #### optimization 优化 ####
+        self.optimizer = tf.train.AdamOptimizer(learning_rate=self.learning_rate).minimize(self.cost)
+
+        #### accuracy 准确率 ####
+        self.correct_pred = tf.equal(tf.argmax(tf.nn.softmax(self.pred), 1), tf.argmax(self.y, 1))
+        self.accuracy = tf.reduce_mean(tf.cast(self.correct_pred, tf.float32))
+
+
+    #################### train ##################
+    def train(self):
+        ########## initialize variables ##########
+        init = tf.global_variables_initializer()
+
+        with tf.Session() as sess:
+            sess.run(init)
+            step = 1
+
+            #### epoch 世代循环 ####
+            for epoch in range(self.epochs + 1):
+
+                #### iteration ####
+                for _ in range(len(self.X_train) // self.batch_size):
+
+                    step += 1
+
+                    ##### get x,y #####
+                    batch_x, batch_y = self.random_batch(self.X_train, self.y_train, self.batch_size)
+
+                    ##### optimizer ####
+                    sess.run(self.optimizer, feed_dict={self.x: batch_x, self.y: batch_y, self.keep_prob: 0.5})
+
+                    ##### show loss and acc #####
+                    if step % self.display_step == 0:
+                        loss, acc = sess.run([self.cost, self.accuracy],
+                                             feed_dict={self.x: batch_x, self.y: batch_y, self.keep_prob: 0.5})
+
+                        print("Epoch " + str(epoch) + ", Minibatch Loss=" + \
+                              "{:.6f}".format(loss) + ", Training Accuracy= " + \
+                              "{:.5f}".format(acc))
+
+            print("Optimizer Finished!")
+
+
+    #################### test ##################
+    def test(self):
+        ########## initialize variables ##########
+        init = tf.global_variables_initializer()
+
+        with tf.Session() as sess:
+            sess.run(init)
+            #### iteration ####
+            for _ in range(len(self.X_test) // self.batch_size):
+                ##### get x,y #####
+                batch_x, batch_y = self.random_batch(self.X_test, self.y_test, self.batch_size)
+
+                ##### show loss and acc #####
+                loss, acc = sess.run([self.cost, self.accuracy], feed_dict={self.x: batch_x, self.y: batch_y, self.keep_prob: 1.0})
+                print(", Minibatch Loss=" + "{:.6f}".format(loss) + ", Training Accuracy= " + \
+                      "{:.5f}".format(acc))
+
+            print("Test Finished!")
+
+
+    ################### random generate data ###################
+    def random_batch(self, images, labels, batch_size):
+        '''
+        :param images: 输入影像集
+        :return: batch data
+                 label: 影像集的label
+                 输出size [N,H,W,C]
+        '''
+
+        num_images = len(images)
+
+        ######## 随机设定待选图片的id ########
+        idx = np.random.choice(num_images, size=batch_size, replace=False)
+
+        ######## 筛选data ########
+        x_batch = images[idx, :, :]
+
+        ######## label ########
+        y_batch = labels[idx, :]
+
+        return x_batch, y_batch
+```
